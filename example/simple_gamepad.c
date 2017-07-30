@@ -22,8 +22,8 @@ void on_gamepad(int buttons, int x, int y) {
 
 int main()
 {
-  MPRINT("Simple Gamepad Example\n");
   uh_init();
+  MPRINT("Simple Gamepad Example\n");
 
   uh_gamepad_attach_func(on_gamepad);
   while(1) {

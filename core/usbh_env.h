@@ -96,6 +96,18 @@ void um_add_hub_device(st_usb_device *dev, int port);
 void um_delete_hub_device(st_usb_device *dev, int port);
 #endif
 
+#ifdef BIGENDIAN
+#define ToLittleU16(val)    ((val << 8) | (val >> 8))
+#define ToLittleS16(val)    ((val << 8) | ((val >> 8) & 0xFF))
+#define ToLittleU32(val)    ((((val)>>24)&0xff) | (((val)<<8)&0xff0000) | (((val)>>8)&0xff00) | (((val)<<24)&0xff000000))
+#define ToLittleS32(val)    ((((val)>>24)&0xff) | (((val)<<8)&0xff0000) | (((val)>>8)&0xff00) | (((val)<<24)&0xff000000))
+#else
+#define ToLittleU16(val)    (val)
+#define ToLittleS16(val)    (val)
+#define ToLittleU32(val)    (val)
+#define ToLittleS32(val)    (val)
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -15,8 +15,8 @@ void on_keyboard(int key, int modifier) {
 
 int main()
 {
-  MPRINT("Simple Keyboard Example\n");
   uh_init();
+  MPRINT("Simple Keyboard Example\n");
 
   uh_keyboard_attach_func(on_keyboard);
 

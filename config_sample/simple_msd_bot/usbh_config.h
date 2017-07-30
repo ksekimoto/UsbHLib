@@ -109,6 +109,7 @@
 #endif
 
 /* Debug Print */
+#define DEBUG_PRINT
 #ifdef DEBUG_PRINT
 #include <stdio.h>
 #define DBGPRINT   MPRINT

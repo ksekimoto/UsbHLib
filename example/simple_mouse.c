@@ -15,14 +15,14 @@ void on_mouse(int buttons, int x, int y, int z) {
 
 int main()
 {
-  MPRINT("Simple Mouse Example\n");
   uh_init();
+  MPRINT("Simple Mouse Example\n");
 
   uh_mouse_attach_func(on_mouse);
 
   while(1) {
     uh_update();
-    ul_timer(1);
+    ul_timer(10);
   }
   return 0;
 }

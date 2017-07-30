@@ -58,6 +58,7 @@ void um_check_hub_status_core(int conn_num,st_usb_device *dev) {
   en_usb_status  status;
   st_hub_port_status ps;
   /* hub */
+  size = USBH_HUB_REPORT_MAX_BUF;
   status = ul_interrupt_in_transfer(conn_num,dev,&size,data);
   if (status != USBH_NAK) {
     usbh_env.hub_status = data[0];
@@ -141,6 +142,7 @@ void um_check_hid_status() {
     for (j=0;j<USBH_LOOKUP_MAX_CNT;j++) {
       dev =  uh_mouse_find(i,j);
       if (dev != NULL) {
+        size = 4;
         status = ul_interrupt_in_transfer(i, dev,&size, buf);
         if (status != USBH_NAK)
 #ifdef USBH_USE_MOUSE_BOOT_PROTOCOL
@@ -167,6 +169,7 @@ void um_check_hid_status() {
     for (j=0;j<USBH_LOOKUP_MAX_CNT;j++) {
       dev =  uh_gamepad_find(i,j);
       if (dev != NULL) {
+        size = 3;
         status = ul_interrupt_in_transfer(i, dev,&size, buf);
         if (status != USBH_NAK) {
           if (size > USBH_HID_REPORT_MAX_BUF) {
@@ -208,6 +211,7 @@ void um_check_hid_status() {
     for (j=0;j<USBH_LOOKUP_MAX_CNT;j++) {
       dev =  uh_keyboard_find(i,j);
       if (dev != NULL) {
+        size = 3;
         status = ul_interrupt_in_transfer(i, dev,&size, buf);
         if (status != USBH_NAK) {
 #ifdef USBH_USE_KEYBOARD_BOOT_PROTOCOL
