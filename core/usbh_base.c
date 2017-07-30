@@ -45,6 +45,11 @@
 #include "usbh_hid.h"
 #endif
 
+#define ENDP_ATTR_CONT  0
+#define ENDP_ATTR_ISO   1
+#define ENDP_ATTR_BULK  2
+#define ENDP_ATTR_INTR  3
+
 /******************************************
  misc API
  *****************************************/
@@ -76,12 +81,10 @@ void um_device_setup(int conn_num,st_usb_host_info *hi,st_usb_device *dev) {
   /* show string descriptor */
   um_get_std_descriptor(conn_num,dev,UDT_STRING);
 
+  if (um_is_msd_bot(dev)) {
   for ( j = 0 ; j < dev->descs.config.BYTE.bNumInterfaces;j++) {
     for ( i = 0 ; i < dev->descs.interface[j].BYTE.bNumEndpoints;i++) {
-#ifdef USBH_USE_MSD
-      if (um_is_msd_bot(dev)) /* Bulk-Endpoint only */
-        if ((dev->descs.interface[j].endp[i].BYTE.bmAttributes & 0x03) != UEPT_BULK) continue;
-#endif
+        if ((dev->descs.interface[j].endp[i].BYTE.bmAttributes & 0x3) == ENDP_ATTR_BULK) {
       if (dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0x80) {
         /* IN Endpoint */
         dev->info.interface[j].ea_in = dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0xf;
@@ -91,20 +94,50 @@ void um_device_setup(int conn_num,st_usb_host_info *hi,st_usb_device *dev) {
         dev->info.interface[j].ea_out = dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0xf;
         dev->info.interface[j].ea_out_max_packet_size = dev->descs.interface[j].endp[i].BYTE.wMaxPacketSize[0];
       }
-#ifdef USBH_USE_MSD
-      /* Use the first pair of Bulk-in and Bulk-out Endpoints only */
-      if (um_is_msd_bot(dev))
-        if ((dev->info.interface[j].ea_in != 0)&&(dev->info.interface[j].ea_out != 0)) break;
-#endif
     }
   }
+    }
+  }
+  for ( j = 0 ; j < dev->descs.config.BYTE.bNumInterfaces;j++) {
+    if (um_is_hid(dev, j)) {
+      for ( i = 0 ; i < dev->descs.interface[j].BYTE.bNumEndpoints;i++) {
+        if ((dev->descs.interface[j].endp[i].BYTE.bmAttributes & 0x3) == ENDP_ATTR_INTR) {
+          if (dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0x80) {
+            /* IN Endpoint */
+            dev->info.interface[j].ea_in = dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0xf;
+            dev->info.interface[j].ea_in_max_packet_size = dev->descs.interface[j].endp[i].BYTE.wMaxPacketSize[0];
+          } else {
+            /* OUT Endpoint */
+            dev->info.interface[j].ea_out = dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0xf;
+            dev->info.interface[j].ea_out_max_packet_size = dev->descs.interface[j].endp[i].BYTE.wMaxPacketSize[0];
+          }
+        }
+      }
+    }
+  }
+
+#ifdef WIFI_B3595
+  for ( j = 0 ; j < dev->descs.config.BYTE.bNumInterfaces;j++) {
+    for ( i = 0 ; i < dev->descs.interface[j].BYTE.bNumEndpoints;i++) {
+      dev->info.interface[j].ep_type[i] = dev->descs.interface[j].endp[i].BYTE.bmAttributes;
+      dev->info.interface[j].ep_max[i] =
+              (unsigned short)(dev->descs.interface[j].endp[i].BYTE.wMaxPacketSize[0]) +
+              (((unsigned short)dev->descs.interface[j].endp[i].BYTE.wMaxPacketSize[0]) << 8);
+      if (dev->descs.interface[j].endp[i].BYTE.bEndpointAddress & 0x80) {
+        dev->info.interface[j].ep_inout[i] = 1;
+      } else {
+        dev->info.interface[j].ep_inout[i] = 0;
+      }
+    }
+  }
+#endif
   /* device address */
   adrs = um_get_next_address(hi) ;
-  /* hardware-dependent setup if needed */
-  ul_hw_device_setup(conn_num,dev,adrs);
   /* configure the device */
   um_set_address(conn_num,dev,adrs);
   ul_timer(2);
+  /* hardware-dependent setup if needed */
+  ul_hw_device_setup(conn_num,dev,adrs);
   um_set_configuration(conn_num,dev,um_get_config_num(dev));
   dev->info.available = 1;
   INFOPRINT("device setup address: %d\n",adrs);
@@ -195,7 +228,7 @@ void um_set_address(int conn_num,st_usb_device *dev,int adrs) {
   st_usb_setup_data sd;
   sd.BYTE.bmRequestType = 0;
   sd.BYTE.bRequest     = 5;
-  sd.BYTE.wValue[0] = adrs;  /* new address */
+  sd.BYTE.wValue[0] = (unsigned char)adrs;  /* new address */
   sd.BYTE.wValue[1] = 0;
   sd.BYTE.wIndex[0] = 0;
   sd.BYTE.wIndex[1] = 0;
@@ -203,12 +236,13 @@ void um_set_address(int conn_num,st_usb_device *dev,int adrs) {
   sd.BYTE.wLength[1] = 0;
   um_control_out_transfer(conn_num,dev,&sd,0);  /* out data size = 0 */
   dev->info.address = adrs;  /* update address after control_out_transfer */
+  udelay(1000000);
 }
 void um_set_configuration(int conn_num,st_usb_device *dev,int c) {
   st_usb_setup_data sd;
   sd.BYTE.bmRequestType = 0;
   sd.BYTE.bRequest     = 9;
-  sd.BYTE.wValue[0] = c;   /* configuration */
+  sd.BYTE.wValue[0] = (unsigned char)c;   /* configuration */
   sd.BYTE.wValue[1] = 0;
   sd.BYTE.wIndex[0] = 0;
   sd.BYTE.wIndex[1] = 0;
@@ -295,7 +329,7 @@ int um_is_hid(st_usb_device *dev,int inum) {
 
 int um_is_msd_bot(st_usb_device *dev) {
   if (/*(dev->info.available) &&*/
-      (dev->descs.interface[0].BYTE.bInterfaceClass == UCC_MASS_STRAGE)&&
+      (dev->descs.interface[0].BYTE.bInterfaceClass == UCC_MASS_STORAGE)&&
       (dev->descs.interface[0].BYTE.bInterfaceSubClass == 0x06)&&  /* SCSI transport command set */
       (dev->descs.interface[0].BYTE.bInterfaceProtocol == 0x50))
     return 1;
@@ -323,15 +357,28 @@ int um_is_msd_bot_valid(st_usb_device *dev) {
   else
     return 0;
 }
+
+int um_is_cdc_control(st_usb_device *dev,int inum) {
+  if (/*(dev->info.available) &&*/
+      (dev->descs.interface[inum].BYTE.bInterfaceClass == UCC_CDC_CONTROL))
+    return 1;
+  else
+    return 0;
+}
+
+#define MAX_BUF_SIZE 256
+static unsigned char buf[MAX_BUF_SIZE];
+
 en_usb_status um_get_std_descriptor(int conn_num,st_usb_device *dev,en_usb_descriptor_type kind) {
   int i,j,k,size;
+  int intno, endno;
   st_usb_setup_data sd;
   en_usb_status status = USBH_OK;
-#ifdef USBH_USE_HID
-  unsigned char buf[9+USBH_MAX_INTERFACE*(9+9+USBH_MAX_ENDP*7)];
-#else
-  unsigned char buf[9+USBH_MAX_INTERFACE*(9+USBH_MAX_ENDP*7)];
-#endif
+//#ifdef USBH_USE_HID
+//  unsigned char buf[9+USBH_MAX_INTERFACE*(9+9+USBH_MAX_ENDP*7)];
+//#else
+//  unsigned char buf[9+USBH_MAX_INTERFACE*(9+USBH_MAX_ENDP*7)];
+//#endif
   sd.BYTE.bmRequestType = 0x80;
   sd.BYTE.bRequest     = 6;
   sd.BYTE.wValue[0] = 0;      /* Descriptor Index */
@@ -378,51 +425,46 @@ en_usb_status um_get_std_descriptor(int conn_num,st_usb_device *dev,en_usb_descr
     sd.BYTE.wLength[0] = size;
     status = um_control_in_transfer(conn_num,dev,&sd,dev->descs.config.PACKED);
   } else if (kind ==  UDT_INTERFACE) {
-    for (j=0;j<dev->descs.config.BYTE.bNumInterfaces;j++) {
-      /* get interface descriptor only */
-#ifdef USBH_USE_HID
-      if (j==0) size = 9;
-      else if (dev->descs.interface[j-1].BYTE.bInterfaceClass == UCC_HID)
-        size = 9+j*(9+9+7*dev->descs.interface[j-1].BYTE.bNumEndpoints);
-      else
-          size = 9+j*(9+7*dev->descs.interface[j-1].BYTE.bNumEndpoints);
-#else
-      size = 9+j*(9+7*dev->descs.interface[j].BYTE.bNumEndpoints);
-#endif
       sd.BYTE.wValue[1] = UDT_CONFIGURATION;   /* Descriptor Type */
-      sd.BYTE.wLength[0] = size+9; /* configuration + interface */
+    sd.BYTE.wLength[0] = dev->descs.config.BYTE.wTotalLength[0];
       status = um_control_in_transfer(conn_num,dev,&sd,buf);
-      for (i=0;i<9;i++) dev->descs.interface[j].PACKED[i] = buf[size+i];
-      if (dev->descs.interface[j].BYTE.bInterfaceClass == UCC_HID) {
-#ifdef USBH_USE_HID
-        size = 9+9+j*(9+9+7*dev->descs.interface[j-1].BYTE.bNumEndpoints);
-        sd.BYTE.wLength[0] = size+9;
-        status = um_control_in_transfer(conn_num,dev,&sd,buf);
-        /* get hid descriptor */
+    k = 9;
+    j = 0;  // j: interface no
+    while (k < dev->descs.config.BYTE.wTotalLength[0]) {
+      if (buf[k+1] == 4) {
+        intno = buf[k+2];
         for (i=0;i<9;i++) {
-          dev->descs.interface[j].hid.PACKED[i] = buf[size+i];
-        }
-#else
-        um_error("HID detected,please define USBH_USE_HID");
-#endif
+          dev->descs.interface[intno].PACKED[i] = buf[k+i];
       }
+        j++;
+        if (j == dev->descs.config.BYTE.bNumInterfaces)
+          break;
+      }
+      if (buf[k] == 0)
+          break;
+      k += buf[k];
     }
   } else if (kind ==  UDT_ENDPOINT) {
-    /* config data is already available */
-    for (k=0;k<dev->descs.config.BYTE.bNumInterfaces;k++) {
-      if (dev->descs.interface[k].BYTE.bInterfaceClass == UCC_HID)
-        size = 9+9+9+k*(9+9+7*dev->descs.interface[k-1].BYTE.bNumEndpoints);
-      else
-        size = 9+9+k*(9+7*dev->descs.interface[k-1].BYTE.bNumEndpoints);
-      /* get_descriptor by config */
       sd.BYTE.wValue[1] = UDT_CONFIGURATION;   /* Descriptor Type */
-      sd.BYTE.wLength[0] = size+7*dev->descs.interface[k].BYTE.bNumEndpoints;
+    sd.BYTE.wLength[0] = dev->descs.config.BYTE.wTotalLength[0];
       status = um_control_in_transfer(conn_num,dev,&sd,buf);
-      for (j=0;j<dev->descs.interface[k].BYTE.bNumEndpoints;j++) {
-        for (i=0;i<7;i++) {
-          dev->descs.interface[k].endp[j].PACKED[i] = buf[size+j*7+i];
-        }
+    k = 9;
+    j = 0;  // j: endpoint no
+    while (k < dev->descs.config.BYTE.wTotalLength[0]) {
+      if (buf[k+1] == 4) {
+        intno = buf[k+2];
+        j = 0;
       }
+      if (buf[k+1] == 5) {
+        endno = buf[k+2] & 0x0f;
+        for (i=0;i<7;i++) {
+          dev->descs.interface[intno].endp[j].PACKED[i] = buf[k+i];
+        }
+        j++;
+      }
+      if (buf[k] == 0)
+        break;
+      k += buf[k];
     }
   } else if (kind ==  UDT_HID) {
     /* already available, nothing to do */

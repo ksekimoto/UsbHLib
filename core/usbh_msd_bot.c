@@ -59,9 +59,9 @@ unsigned char max_lun = 0;
 void um_disk_env_init(int conn_num,st_usb_device *dev) {
   int i;
   /* cbw setup */
-  cbw.KIND.dCBWSignatire = 0x43425355;
-  cbw.KIND.dCBWTag = 0xdeadbeef;
-  cbw.KIND.dCBWDataTransferLength = 0;/* no data transfer */
+  cbw.KIND.dCBWSignatire = ToLittleU32(0x43425355);
+  cbw.KIND.dCBWTag = ToLittleU32(0xdeadbeef);
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(0);/* no data transfer */
   cbw.KIND.bmCBWFlags = 0;
   cbw.KIND.bCBWLUN = 0;
   cbw.KIND.bCBWCBLength = 0;
@@ -108,7 +108,7 @@ en_usb_status um_bot_set_command_request_sense(int conn_num,st_usb_device *dev,u
   cbw.KIND.bmCBWFlags = 0x80;  /* direction: Data-In */
   cbw.KIND.bCBWLUN = lun;
   cbw.KIND.bCBWCBLength = 0xc; /* 6 */
-  cbw.KIND.dCBWDataTransferLength = 18; /* 18 */
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(18); /* 18 */
   scsi_request_sense.KIND.LUN = (lun & 0x7) << 5;
   for (i=0;i<0xc;i++)
     cbw.KIND.CBWCB[i] = 0;
@@ -127,7 +127,7 @@ en_usb_status um_bot_set_command_test_unit_ready(int conn_num,st_usb_device *dev
   cbw.KIND.bmCBWFlags = 0x00;  /* direction: Data-Out */
   cbw.KIND.bCBWCBLength = 6;
   cbw.KIND.bCBWLUN = lun;
-  cbw.KIND.dCBWDataTransferLength = 0;
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(0);
   scsi_tur.KIND.LUN = (lun & 0x7) << 5;
   for (i=0;i<6;i++)
     cbw.KIND.CBWCB[i] = scsi_tur.PACKED[i];
@@ -145,7 +145,7 @@ en_usb_status um_bot_set_command_inquiry(int conn_num,st_usb_device *dev,int lun
   en_usb_status status;
   cbw.KIND.bmCBWFlags = 0x80;  /* direction: Data-In */
   cbw.KIND.bCBWCBLength = 6;
-  cbw.KIND.dCBWDataTransferLength = 36; /* usually 36 */
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(36); /* usually 36 */
   cbw.KIND.bCBWLUN = lun;
   scsi_tur.KIND.LUN = (lun & 0x7) << 5;
   for (i=0;i<6;i++)
@@ -163,7 +163,7 @@ en_usb_status um_bot_set_command_read_capacity(int conn_num,st_usb_device *dev,i
   en_usb_status status;
   cbw.KIND.bmCBWFlags = 0x80;  /* direction: Data-In */
   cbw.KIND.bCBWCBLength = 10;
-  cbw.KIND.dCBWDataTransferLength = 8;
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(8);
   cbw.KIND.bCBWLUN = lun;
   scsi_tur.KIND.LUN = (lun & 0x7) << 5;
   for (i=0;i<10;i++)
@@ -181,7 +181,7 @@ void um_bot_set_command_read(int conn_num,st_usb_device *dev,
   int i;
   DBGPRINT("sector %x\n",sector  );
   /* cbw setup */
-  cbw.KIND.dCBWDataTransferLength = size*512;
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(size*512);
   cbw.KIND.bmCBWFlags = 0x80;  /* direction: Data-In */
   cbw.KIND.bCBWCBLength = 10;
   cbw.KIND.bCBWLUN = lun;
@@ -201,7 +201,7 @@ void um_bot_set_command_write(int conn_num,st_usb_device *dev,
                             unsigned char lun,unsigned int sector, unsigned int size) {
   int i;
   /* cbw setup */
-  cbw.KIND.dCBWDataTransferLength = size*512;
+  cbw.KIND.dCBWDataTransferLength = ToLittleU32(size*512);
   cbw.KIND.bmCBWFlags = 0x00;  /* direction: Data-Out */
   cbw.KIND.bCBWCBLength = 10;
   cbw.KIND.bCBWLUN = lun;

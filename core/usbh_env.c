@@ -62,6 +62,7 @@ void um_init_device_info_struct(st_usb_device_info *info) {
   info->cur_interface = 0;
   for (i=0;i<USBH_MAX_INTERFACE;i++) {
     info->interface[i].out_data_type = 0;
+    info->interface[i].in_data_type = 0;
     info->interface[i].ea_in = 0;
     info->interface[i].ea_in_max_packet_size = 0;
     info->interface[i].ea_out = 0;
@@ -171,8 +172,15 @@ void uh_init() {
       um_device_setup(conn_num,
                         &usbh_env.conn[conn_num].host_info,
                         usbh_env.conn[conn_num].p_root);
+    } else
+    if (um_is_cdc_control(usbh_env.conn[conn_num].p_root,0)) { /* check interface0 */
+      INFOPRINT("\nroot device is cdc_control\n");
+      um_device_setup(conn_num,
+                        &usbh_env.conn[conn_num].host_info,
+                        usbh_env.conn[conn_num].p_root);
     } else {
-       um_error("the device is not supported.");
+       //um_error("the device is not supported.");
+       INFOPRINT("the device is not supported.");
     }
   }  /* for (conn_num = USBH_START_CONN; conn_num < USBH_START_CONN+USBH_NUM_OF_CONNS; conn_num++) */
   INFOPRINT("\nUSB address and configuration set finished\n");

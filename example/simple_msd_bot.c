@@ -102,7 +102,8 @@ int main()
     rc = f_read(&Fil, Buff, sizeof Buff, &br);/* Read a chunk of file */
     if (rc || !br) break;             /* Error or end of file */
     for (i = 0; i < br; i++)          /* Type the data */
-      putchar(Buff[i]);
+      //putchar(Buff[i]);
+      MPRINT("%c", Buff[i]);
     }
     if (rc) die(rc);
 

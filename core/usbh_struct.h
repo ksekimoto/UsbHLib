@@ -79,10 +79,29 @@ typedef enum {
   UDRR_OTHER = 3
 } en_usb_device_request_recipient;
 
+// interface class code
 typedef enum {
+  UCC_AUDIO = 0x01,
+  UCC_CDC_CONTROL = 0x02,
   UCC_HID = 0x03,
-  UCC_MASS_STRAGE = 0x08,
-  UCC_HUB = 0x09
+  UCC_PHYSICAL = 0x05,
+  UCC_IMAGE = 0x06,
+  UCC_PRINTER = 0x07,
+  UCC_MASS_STORAGE = 0x08,
+  UCC_HUB = 0x09,
+  UCC_CDC_DATA = 0x0a,
+  UCC_SMART_CARD = 0x0b,
+  UCC_CONTENT_SECURITY = 0x0d,
+  UCC_VIDEO = 0x0e,
+  UCC_HEALTH_CARE = 0x0f,
+  UCC_AUDIO_VIDEO = 0x10,
+  UCC_BILLBOARD = 0x11,
+  UCC_USB_TYPE_C = 0x12,
+  UCC_DIAGNOSTIC = 0xdc,
+  UCC_WIRELESS = 0xe0,
+  UCC_MISC = 0xef,
+  UCC_APPLICATION = 0xfe,
+  UCC_VENDOR = 0xff
 } en_usb_class_code;
 
 typedef enum {
@@ -92,13 +111,6 @@ typedef enum {
   USBH_STALL = 0x20,
   USBH_ERROR = 0xff
 } en_usb_status;
-
-typedef enum {
-  UEPT_CONTROL = 0x00,
-  UEPT_ISOCHRONOUS = 0x01,
-  UEPT_BULK = 0x02,
-  UEPT_INTERRUPT = 0x03
-} en_usb_endpoint_type;
 
 typedef struct {
   union {
@@ -297,11 +309,18 @@ typedef struct {
 
 /*  device information    */
 typedef struct {
+  char in_data_type;       /* DATA0/DATA1 toggle */
   char out_data_type;      /* DATA0/DATA1 toggle */
   char ea_in;              /* endpoint address */
-  char ea_in_max_packet_size;
+  unsigned short ea_in_max_packet_size;
   char ea_out;             /* endpoint address */
-  char ea_out_max_packet_size;
+  unsigned short ea_out_max_packet_size;
+
+#ifdef WIFI_B3595
+  char ep_type[USBH_MAX_ENDP];
+  char ep_inout[USBH_MAX_ENDP]; // 0:out, 1:in
+  unsigned short ep_max[USBH_MAX_ENDP];
+#endif
 } st_usb_endpoint_info;
 
 typedef struct {
@@ -311,6 +330,7 @@ typedef struct {
   unsigned char address;   /* default 0 */
 
   unsigned char cur_interface;   /* current interface number */
+  unsigned char cur_endpoint;    /* current endpoint index */
   st_usb_endpoint_info interface[USBH_MAX_INTERFACE];
 } st_usb_device_info;
 
@@ -326,6 +346,11 @@ typedef struct _usb_device st_usb_device;
 struct _usb_device {
   st_usb_descriptors descs;  /* set descriptor information */
   st_usb_device_info info;   /* other data */
+#if defined(CONFIG_FM3) || defined(CONFIG_FM4)
+  /* one bit for each endpoint ([0] = IN, [1] = OUT) */
+  unsigned int toggle[2];
+  unsigned long pipe;
+#endif
 #ifdef USBH_USE_HUB
   st_usb_device* p_devices[USBH_MAX_HUB_PORT]; /* device pointer */
 #endif

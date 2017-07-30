@@ -43,6 +43,7 @@
 #ifndef __USBH_CONFIG_H__
 #define __USBH_CONFIG_H__
 #include "usbh_misc.h"
+#define DEBUG_PRINT
 /* USB Env */
 #define USBH_DEV_INITIAL_ADDRESS 1
 #define USBH_START_CONN 0
