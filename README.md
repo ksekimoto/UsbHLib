@@ -2,7 +2,7 @@
 
 ## Overview
 This UsbHLib repository is based on the following site.
-- [https://www.kice.tokyo/open-source/usbhlib_top.html](https://www.kice.tokyo/open-source/usbhlib_top.html, "UsbHLib")
+- [usbhlib_top](https://www.kice.tokyo/open-source/usbhlib_top.html, "UsbHLib")
 
 ## UsbHLib original readme.txt
 
